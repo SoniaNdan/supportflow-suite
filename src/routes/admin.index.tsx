@@ -1,23 +1,70 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { DashboardLayout } from "@/components/dashboard-layout";
 import { Card } from "@/components/ui/card";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { StatusBadge } from "@/components/status-badge";
-import { Inbox, Users, Clock, TrendingUp, ArrowUpRight } from "lucide-react";
+import { StatusBadge, PriorityBadge } from "@/components/status-badge";
+import { Inbox, Users, Clock, CheckCircle2, ArrowUpRight } from "lucide-react";
+import { useEffect, useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { RequireAuth } from "@/components/require-auth";
 
 export const Route = createFileRoute("/admin/")({
   head: () => ({ meta: [{ title: "Admin overview — ResolveDesk" }] }),
-  component: AdminDashboard,
+  component: () => <RequireAuth staff><AdminDashboard /></RequireAuth>,
 });
 
-const stats = [
-  { label: "Total tickets", value: "1,284", trend: "+8.2%", icon: Inbox, color: "text-info" },
-  { label: "Active users", value: "342", trend: "+12", icon: Users, color: "text-primary" },
-  { label: "Avg response", value: "1.8h", trend: "-22%", icon: Clock, color: "text-success" },
-  { label: "SLA compliance", value: "97%", trend: "+1.2%", icon: TrendingUp, color: "text-warning" },
-];
+type Row = {
+  id: string; ticket_no: string; subject: string; user_id: string; category: string;
+  status: "open" | "in_progress" | "pending" | "resolved" | "closed";
+  priority: "low" | "medium" | "high" | "urgent";
+  created_at: string;
+};
 
 function AdminDashboard() {
+  const [rows, setRows] = useState<Row[]>([]);
+  const [users, setUsers] = useState<Record<string, string>>({});
+  const [userCount, setUserCount] = useState(0);
+
+  useEffect(() => {
+    (async () => {
+      const [{ data: c }, { count }] = await Promise.all([
+        supabase.from("complaints")
+          .select("id, ticket_no, subject, user_id, category, status, priority, created_at")
+          .order("created_at", { ascending: false }),
+        supabase.from("profiles").select("id", { count: "exact", head: true }),
+      ]);
+      const list = (c ?? []) as Row[];
+      setRows(list);
+      setUserCount(count ?? 0);
+      const uids = Array.from(new Set(list.map((r) => r.user_id)));
+      if (uids.length) {
+        const { data: p } = await supabase.from("profiles").select("id, full_name, email").in("id", uids);
+        const map: Record<string, string> = {};
+        (p ?? []).forEach((x: { id: string; full_name: string | null; email: string | null }) => {
+          map[x.id] = x.full_name || x.email || "User";
+        });
+        setUsers(map);
+      }
+    })();
+  }, []);
+
+  const total = rows.length;
+  const open = rows.filter((r) => r.status === "open" || r.status === "in_progress").length;
+  const resolved = rows.filter((r) => r.status === "resolved" || r.status === "closed").length;
+  const stats = [
+    { label: "Total tickets", value: total, icon: Inbox, color: "text-info" },
+    { label: "Active users", value: userCount, icon: Users, color: "text-primary" },
+    { label: "Open / in progress", value: open, icon: Clock, color: "text-warning" },
+    { label: "Resolved", value: resolved, icon: CheckCircle2, color: "text-success" },
+  ];
+
+  // category breakdown
+  const cats: Record<string, number> = {};
+  rows.forEach((r) => { cats[r.category] = (cats[r.category] ?? 0) + 1; });
+  const catList = Object.entries(cats).map(([l, v]) => ({ l, v }));
+  const max = Math.max(1, ...catList.map((c) => c.v));
+
+  const critical = rows.filter((r) => (r.priority === "urgent" || r.priority === "high") && (r.status === "open" || r.status === "in_progress")).slice(0, 5);
+
   return (
     <DashboardLayout
       variant="admin"
@@ -31,10 +78,7 @@ function AdminDashboard() {
               <span className="text-sm text-muted-foreground">{s.label}</span>
               <s.icon className={`h-4 w-4 ${s.color}`} />
             </div>
-            <div className="mt-3 flex items-end justify-between">
-              <span className="text-3xl font-bold tracking-tight">{s.value}</span>
-              <span className="rounded-md bg-success/10 px-2 py-0.5 text-xs font-medium text-success">{s.trend}</span>
-            </div>
+            <div className="mt-3 text-3xl font-bold tracking-tight">{s.value}</div>
           </Card>
         ))}
       </div>
@@ -46,19 +90,14 @@ function AdminDashboard() {
             <Link to="/admin/tickets" className="inline-flex items-center gap-1 text-sm text-primary hover:underline">View tickets <ArrowUpRight className="h-3.5 w-3.5" /></Link>
           </div>
           <div className="mt-6 space-y-4">
-            {[
-              { l: "Billing", v: 86, c: "bg-primary" },
-              { l: "Technical", v: 72, c: "bg-info" },
-              { l: "Account", v: 54, c: "bg-success" },
-              { l: "Feature Request", v: 38, c: "bg-warning" },
-              { l: "Other", v: 22, c: "bg-muted-foreground" },
-            ].map((s) => (
+            {catList.length === 0 && <p className="text-sm text-muted-foreground">No data yet.</p>}
+            {catList.map((s) => (
               <div key={s.l}>
                 <div className="mb-1.5 flex items-center justify-between text-sm">
-                  <span>{s.l}</span><span className="font-semibold">{s.v}%</span>
+                  <span>{s.l}</span><span className="font-semibold">{s.v}</span>
                 </div>
                 <div className="h-2 overflow-hidden rounded-full bg-muted">
-                  <div className={`h-full ${s.c}`} style={{ width: `${s.v}%` }} />
+                  <div className="h-full bg-primary" style={{ width: `${(s.v / max) * 100}%` }} />
                 </div>
               </div>
             ))}
@@ -67,21 +106,14 @@ function AdminDashboard() {
 
         <Card className="p-6">
           <h2 className="font-semibold">Recent activity</h2>
-          <ul className="mt-5 space-y-4">
-            {[
-              { who: "AM", name: "Alex Morgan", action: "resolved TKT-2031", time: "2m" },
-              { who: "JD", name: "Jane Doe", action: "submitted TKT-2042", time: "8m" },
-              { who: "SK", name: "Sara Kim", action: "replied to TKT-2039", time: "23m" },
-              { who: "RP", name: "Ravi Patel", action: "assigned TKT-2040", time: "1h" },
-              { who: "MO", name: "Mia Ortiz", action: "closed TKT-2025", time: "3h" },
-            ].map((a, i) => (
-              <li key={i} className="flex items-center gap-3">
-                <Avatar className="h-9 w-9"><AvatarFallback className="bg-accent text-accent-foreground text-xs">{a.who}</AvatarFallback></Avatar>
-                <div className="flex-1 text-sm">
-                  <span className="font-medium">{a.name}</span>{" "}
-                  <span className="text-muted-foreground">{a.action}</span>
+          <ul className="mt-5 space-y-3">
+            {rows.slice(0, 6).map((r) => (
+              <li key={r.id} className="flex items-center gap-3 text-sm">
+                <div className="flex-1">
+                  <div className="font-medium">{users[r.user_id] ?? "User"}</div>
+                  <div className="truncate text-xs text-muted-foreground">{r.ticket_no} · {r.subject}</div>
                 </div>
-                <span className="text-xs text-muted-foreground">{a.time}</span>
+                <StatusBadge status={r.status} />
               </li>
             ))}
           </ul>
@@ -94,20 +126,17 @@ function AdminDashboard() {
           <Link to="/admin/tickets" className="text-sm text-primary hover:underline">Manage</Link>
         </div>
         <div className="divide-y divide-border">
-          {[
-            { id: "TKT-2042", subject: "Payment processing failed for premium plan", user: "Jane Doe", status: "open" as const, time: "8m ago" },
-            { id: "TKT-2039", subject: "Refund request for order #88421", user: "Sara Kim", status: "in_progress" as const, time: "5h ago" },
-            { id: "TKT-2036", subject: "API rate limit incorrectly applied", user: "Ravi Patel", status: "open" as const, time: "1d ago" },
-          ].map((t) => (
-            <div key={t.id} className="grid grid-cols-12 items-center gap-3 px-6 py-4">
+          {critical.length === 0 && <div className="px-6 py-10 text-center text-sm text-muted-foreground">All critical tickets are handled. Nice work.</div>}
+          {critical.map((t) => (
+            <Link key={t.id} to="/complaints/$id" params={{ id: t.ticket_no }} className="grid grid-cols-12 items-center gap-3 px-6 py-4 hover:bg-muted/40">
               <div className="col-span-12 sm:col-span-7">
-                <div className="font-mono text-xs text-muted-foreground">{t.id}</div>
+                <div className="font-mono text-xs text-muted-foreground">{t.ticket_no}</div>
                 <div className="font-medium">{t.subject}</div>
               </div>
-              <div className="col-span-6 sm:col-span-2 text-sm text-muted-foreground">{t.user}</div>
+              <div className="col-span-6 sm:col-span-2 text-sm text-muted-foreground">{users[t.user_id] ?? "—"}</div>
+              <div className="col-span-3 sm:col-span-1"><PriorityBadge p={t.priority} /></div>
               <div className="col-span-3 sm:col-span-2"><StatusBadge status={t.status} /></div>
-              <div className="col-span-3 sm:col-span-1 text-right text-xs text-muted-foreground">{t.time}</div>
-            </div>
+            </Link>
           ))}
         </div>
       </Card>
