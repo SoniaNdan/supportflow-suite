@@ -13,6 +13,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useTheme } from "./theme-provider";
+import { useAuth } from "@/hooks/use-auth";
+import { useNavigate } from "@tanstack/react-router";
 import { cn } from "@/lib/utils";
 
 const userNav = [
@@ -41,7 +43,16 @@ export function DashboardLayout({ children, variant = "user", title, breadcrumbs
   const [open, setOpen] = useState(false);
   const { theme, toggle } = useTheme();
   const path = useRouterState({ select: (s) => s.location.pathname });
+  const { user, isStaff, signOut } = useAuth();
+  const navigate = useNavigate();
   const nav = variant === "admin" ? adminNav : userNav;
+  const displayName = (user?.user_metadata?.full_name as string) || user?.email?.split("@")[0] || "User";
+  const initials = displayName.split(" ").map((p) => p[0]).join("").slice(0, 2).toUpperCase();
+
+  async function handleSignOut() {
+    await signOut();
+    navigate({ to: "/login" });
+  }
 
   return (
     <div className="flex min-h-screen w-full bg-muted/30">
@@ -84,10 +95,12 @@ export function DashboardLayout({ children, variant = "user", title, breadcrumbs
             );
           })}
           <div className="px-3 pb-2 pt-6 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Switch</div>
-          <Link to={variant === "admin" ? "/dashboard" : "/admin"} className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-sidebar-foreground hover:bg-sidebar-accent/60">
-            <ShieldCheck className="h-4 w-4" />
-            {variant === "admin" ? "User View" : "Admin View"}
-          </Link>
+          {isStaff && (
+            <Link to={variant === "admin" ? "/dashboard" : "/admin"} className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-sidebar-foreground hover:bg-sidebar-accent/60">
+              <ShieldCheck className="h-4 w-4" />
+              {variant === "admin" ? "User View" : "Admin View"}
+            </Link>
+          )}
         </nav>
         <div className="absolute bottom-4 left-3 right-3 rounded-xl border border-sidebar-border bg-card p-3">
           <div className="text-xs font-semibold">Need help?</div>
@@ -137,18 +150,20 @@ export function DashboardLayout({ children, variant = "user", title, breadcrumbs
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="gap-2 px-2">
-                  <Avatar className="h-8 w-8"><AvatarFallback className="bg-primary text-primary-foreground">JD</AvatarFallback></Avatar>
-                  <span className="hidden text-sm sm:inline">Jane Doe</span>
+                  <Avatar className="h-8 w-8"><AvatarFallback className="bg-primary text-primary-foreground">{initials}</AvatarFallback></Avatar>
+                  <span className="hidden text-sm sm:inline">{displayName}</span>
                   <ChevronDown className="hidden h-4 w-4 sm:inline" />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-56">
-                <DropdownMenuLabel>My Account</DropdownMenuLabel>
+                <DropdownMenuLabel>{user?.email ?? "My Account"}</DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem asChild><Link to="/settings">Profile</Link></DropdownMenuItem>
                 <DropdownMenuItem asChild><Link to="/settings">Settings</Link></DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem asChild><Link to="/login" className="text-destructive"><LogOut className="mr-2 h-4 w-4" />Sign out</Link></DropdownMenuItem>
+                <DropdownMenuItem onClick={handleSignOut} className="text-destructive">
+                  <LogOut className="mr-2 h-4 w-4" />Sign out
+                </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
