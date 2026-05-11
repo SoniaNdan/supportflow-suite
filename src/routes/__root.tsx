@@ -10,8 +10,6 @@ import {
 
 import appCss from "../styles.css?url";
 import { ThemeProvider } from "@/components/theme-provider";
-import { AuthProvider } from "@/hooks/use-auth";
-import { Toaster } from "@/components/ui/sonner";
 
 function NotFoundComponent() {
   return (
@@ -79,10 +77,14 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "description", content: "Modern complaint and ticket management system for teams. Track, triage, and resolve issues fast." },
       { name: "author", content: "ResolveDesk" },
       { property: "og:title", content: "ResolveDesk — Complaint & Ticket Management" },
-      { property: "og:description", content: "Modern complaint and ticket management system for teams." },
+      { property: "og:description", content: "Modern complaint and ticket management system for teams. Track, triage, and resolve issues fast." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
       { name: "twitter:site", content: "@Lovable" },
+      { name: "twitter:title", content: "ResolveDesk — Complaint & Ticket Management" },
+      { name: "twitter:description", content: "Modern complaint and ticket management system for teams. Track, triage, and resolve issues fast." },
+      { property: "og:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/attachments/og-images/aa3f4e44-2a84-4f03-bb97-601ca33bc96f" },
+      { name: "twitter:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/attachments/og-images/aa3f4e44-2a84-4f03-bb97-601ca33bc96f" },
     ],
     links: [
       { rel: "stylesheet", href: appCss },
@@ -117,10 +119,7 @@ function RootComponent() {
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
-        <AuthProvider>
-          <Outlet />
-          <Toaster richColors position="top-right" />
-        </AuthProvider>
+        <Outlet />
       </ThemeProvider>
     </QueryClientProvider>
   );
