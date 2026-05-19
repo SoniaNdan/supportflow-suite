@@ -1,0 +1,13 @@
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteRule ^ index.php [QSA,L]
+</IfModule>
+
+# Prevent script execution inside uploads
+<Directory "uploads">
+    php_flag engine off
+    Options -ExecCGI
+    AddType text/plain .php .phtml .php3 .php4 .php5 .pl .py .jsp .asp .htm .shtml .sh .cgi
+</Directory>
