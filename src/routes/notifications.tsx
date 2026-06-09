@@ -69,7 +69,7 @@ function Notifications() {
     load();
     if (!user) return;
     const channel = supabase
-      .channel("notifications-stream")
+      .channel(`notifications-stream:${user.id}`)
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "notifications", filter: `user_id=eq.${user.id}` },
