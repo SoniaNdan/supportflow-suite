@@ -17,13 +17,17 @@ export const Route = createFileRoute("/login")({
 function LoginPage() {
   const navigate = useNavigate();
   const { session } = useAuth();
+  const { next } = Route.useSearch();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (session) navigate({ to: "/dashboard" });
-  }, [session, navigate]);
+    if (session) {
+      if (next) window.location.href = next;
+      else navigate({ to: "/dashboard" });
+    }
+  }, [session, navigate, next]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -35,6 +39,7 @@ function LoginPage() {
       return;
     }
     toast.success("Welcome back!");
+    if (next) { window.location.href = next; return; }
     navigate({ to: "/dashboard" });
   }
 
