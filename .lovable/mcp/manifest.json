@@ -1,0 +1,271 @@
+{
+  "version": 1,
+  "sdk_version": "0.26.1",
+  "path": "/mcp",
+  "auth": {
+    "type": "oauth",
+    "issuer": "https://bvwtztoldyaripquwmqs.supabase.co/auth/v1",
+    "accepted_audiences": [
+      "authenticated"
+    ]
+  },
+  "mcp": {
+    "server": {
+      "name": "supportflow-suite",
+      "version": "0.1.0",
+      "title": "SupportFlow Suite"
+    },
+    "tools": [
+      {
+        "name": "list_complaints",
+        "title": "List complaints",
+        "description": "List complaint tickets visible to the signed-in user, optionally filtered by status or priority.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "status": {
+              "type": "string",
+              "enum": [
+                "open",
+                "in_progress",
+                "pending",
+                "resolved",
+                "closed"
+              ],
+              "description": "Only return tickets with this status."
+            },
+            "priority": {
+              "type": "string",
+              "enum": [
+                "low",
+                "medium",
+                "high",
+                "urgent"
+              ],
+              "description": "Only return tickets with this priority."
+            },
+            "search": {
+              "type": "string",
+              "description": "Case-insensitive match on subject."
+            },
+            "limit": {
+              "type": "integer",
+              "description": "Max rows to return (default 20, max 100)."
+            }
+          },
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "get_complaint",
+        "title": "Get complaint",
+        "description": "Fetch one complaint ticket with its full reply thread, by ticket number or id.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "ticket_no": {
+              "type": "string",
+              "description": "Ticket number, e.g. TCK-0007."
+            },
+            "id": {
+              "type": "string",
+              "description": "Complaint UUID."
+            }
+          },
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "create_complaint",
+        "title": "Create complaint",
+        "description": "Submit a new complaint ticket on behalf of the signed-in user.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "subject": {
+              "type": "string",
+              "description": "Short summary of the issue."
+            },
+            "description": {
+              "type": "string",
+              "description": "Full details of the issue."
+            },
+            "category": {
+              "type": "string",
+              "description": "Category, e.g. Billing, Technical, Account, Service."
+            },
+            "priority": {
+              "type": "string",
+              "enum": [
+                "low",
+                "medium",
+                "high",
+                "urgent"
+              ],
+              "description": "Priority (defaults to medium)."
+            }
+          },
+          "required": [
+            "subject",
+            "description",
+            "category"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "add_reply",
+        "title": "Reply to a complaint",
+        "description": "Post a reply message on a complaint ticket thread.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "complaint_id": {
+              "type": "string",
+              "description": "Complaint UUID (from list_complaints or get_complaint)."
+            },
+            "message": {
+              "type": "string",
+              "description": "Reply body."
+            }
+          },
+          "required": [
+            "complaint_id",
+            "message"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "update_complaint_status",
+        "title": "Update complaint status",
+        "description": "Change the status and/or priority of a complaint ticket. Requires staff permissions in the app.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "complaint_id": {
+              "type": "string",
+              "description": "Complaint UUID."
+            },
+            "status": {
+              "type": "string",
+              "enum": [
+                "open",
+                "in_progress",
+                "pending",
+                "resolved",
+                "closed"
+              ],
+              "description": "New status."
+            },
+            "priority": {
+              "type": "string",
+              "enum": [
+                "low",
+                "medium",
+                "high",
+                "urgent"
+              ],
+              "description": "New priority."
+            }
+          },
+          "required": [
+            "complaint_id"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "list_notifications",
+        "title": "List notifications",
+        "description": "List the signed-in user's notifications, newest first.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "unread_only": {
+              "type": "boolean",
+              "description": "Only return unread notifications."
+            },
+            "limit": {
+              "type": "integer",
+              "description": "Max rows to return (default 20, max 100)."
+            }
+          },
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "mark_notification_read",
+        "title": "Mark notification read/unread",
+        "description": "Mark one notification as read or unread, or mark every notification as read at once.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "notification_id": {
+              "type": "string",
+              "description": "Notification UUID. Omit with all=true."
+            },
+            "all": {
+              "type": "boolean",
+              "description": "Mark all of the user's notifications as read."
+            },
+            "is_read": {
+              "type": "boolean",
+              "description": "Target read state (defaults to true)."
+            }
+          },
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      }
+    ]
+  }
+}
