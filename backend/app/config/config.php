@@ -18,7 +18,12 @@ define('BASE_PATH', dirname(__DIR__, 2));
 define('PUBLIC_PATH', BASE_PATH . '/public');
 define('UPLOAD_PATH', PUBLIC_PATH . '/uploads');
 define('LOG_PATH', BASE_PATH . '/storage/logs');
-define('BASE_URL', (isset($_SERVER['HTTPS']) ? 'https' : 'http') . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost'));
+define(
+    'BASE_URL',
+    (isset($_SERVER['HTTPS']) ? 'https' : 'http')
+    . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost')
+    . '/dashboard/PROJECTS/supportflow-suite/backend/public'
+);
 
 define('MAX_UPLOAD_BYTES', 5 * 1024 * 1024); // 5 MB
 define('ALLOWED_UPLOAD_MIME', [

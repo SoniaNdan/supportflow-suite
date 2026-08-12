@@ -1,4 +1,8 @@
 <?php
+
+// error_reporting(E_ALL);
+// ini_set('display_errors', 1);
+
 declare(strict_types=1);
 
 // Bootstrap
@@ -19,9 +23,26 @@ spl_autoload_register(function ($class) {
 });
 
 $method = $_SERVER['REQUEST_METHOD'];
+
 $uri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH) ?? '/';
+
+// Base folder where the backend is installed
+$basePath = '/dashboard/PROJECTS/supportflow-suite/backend/public';
+
+// Remove the base path from the request
+if (str_starts_with($uri, $basePath)) {
+    $uri = substr($uri, strlen($basePath));
+}
+
 $path = '/' . trim($uri, '/');
-if ($path === '/') $path = '/';
+
+if ($path === '//') {
+    $path = '/';
+}
+
+if ($path === '') {
+    $path = '/';
+}
 
 // API
 if (str_starts_with($path, '/api/')) {

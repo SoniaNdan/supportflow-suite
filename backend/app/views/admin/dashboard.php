@@ -9,7 +9,7 @@
     <div class="text-xs text-slate-500">Users</div>
     <div class="text-2xl font-bold mt-1"><?= (int)$users ?></div></div>
 </div>
-<div class="flex gap-3 mb-6"><a href="/admin/tickets" class="bg-indigo-600 text-white px-4 py-2 rounded text-sm">Manage tickets</a><a href="/admin/users" class="bg-slate-900 text-white px-4 py-2 rounded text-sm">Manage users</a></div>
+<div class="flex gap-3 mb-6"><a href="<?= BASE_URL ?>/admin/tickets" class="bg-indigo-600 text-white px-4 py-2 rounded text-sm">Manage tickets</a><a href="<?= BASE_URL ?>/admin/users" class="bg-slate-900 text-white px-4 py-2 rounded text-sm">Manage users</a></div>
 <h2 class="text-lg font-semibold mb-3">Recent activity</h2>
 <div class="bg-white rounded-xl shadow-sm border border-slate-100 divide-y text-sm">
   <?php foreach ($activity as $a): ?>

@@ -12,18 +12,18 @@
     <a href="/" class="font-bold text-indigo-600"><?= APP_NAME ?></a>
     <div class="flex gap-4 text-sm">
       <?php if (auth_check()): ?>
-        <a href="/dashboard" class="hover:text-indigo-600">Dashboard</a>
-        <a href="/tickets" class="hover:text-indigo-600">Tickets</a>
-        <a href="/notifications" class="hover:text-indigo-600">Notifications</a>
+        <a href="<?= url('/dashboard') ?>" class="hover:text-indigo-600">Dashboard</a>
+        <a href="<?= url('/tickets') ?>" class="hover:text-indigo-600">Tickets</a>
+        <a href="<?= url('/notifications') ?>" class="hover:text-indigo-600">Notifications</a>
         <?php if (auth_is_admin()): ?>
-          <a href="/admin/dashboard" class="hover:text-indigo-600">Admin</a>
+          <a href="<?= url('/admin/dashboard') ?>" class="hover:text-indigo-600">Admin</a>
         <?php endif; ?>
-        <a href="/settings" class="hover:text-indigo-600">Settings</a>
-        <form method="post" action="/logout" class="inline"><?= csrf_field() ?>
+        <a href="<?= url('/settings') ?>" class="hover:text-indigo-600">Settings</a>
+        <form method="post" action="<?= url('/logout') ?>" class="inline"><?= csrf_field() ?>
           <button class="text-rose-600">Logout</button>
         </form>
       <?php else: ?>
-        <a href="/login">Sign in</a><a href="/register" class="text-indigo-600 font-medium">Register</a>
+        <a href="<?= url('/login') ?>">Sign in</a><a href="<?= url('/register') ?>" class="text-indigo-600 font-medium">Register</a>
       <?php endif; ?>
     </div>
   </div>
