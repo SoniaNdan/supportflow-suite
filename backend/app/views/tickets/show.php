@@ -35,8 +35,7 @@
     <a
       href="<?= e($ticket['attachment_path']) ?>"
       class="inline-block mt-3 text-indigo-600 text-sm"
-      target="_blank"
-    >
+      target="_blank">
       Download attachment
     </a>
   <?php endif; ?>
@@ -45,127 +44,108 @@
 
 <?php if (auth_is_admin()): ?>
 
-<!-- ADMIN CONTROLS -->
-<div class="bg-white rounded-xl shadow-sm border border-slate-100 p-5 mb-6">
+  <!-- ADMIN CONTROLS -->
+  <div class="bg-white rounded-xl shadow-sm border border-slate-100 p-5 mb-6">
 
-  <h2 class="text-lg font-semibold mb-4">
-    Admin controls
-  </h2>
+    <h2 class="text-lg font-semibold mb-4">
+      Admin controls
+    </h2>
 
-  <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
 
-    <!-- STATUS -->
-    <form
-      method="post"
-      action="<?= url('/admin/tickets/' . (int)$ticket['id'] . '/status') ?>"
-      class="border border-slate-200 rounded-lg p-4"
-    >
-      <?= csrf_field() ?>
+      <!-- STATUS -->
+      <form method="post" action="<?= url('/admin/tickets/' . (int)$ticket['id'] . '/status') ?>" class="border border-slate-200 rounded-lg p-4">
 
-      <label class="block text-sm font-medium mb-2">
-        Ticket status
-      </label>
+        <?= csrf_field() ?>
 
-      <select
-        name="status"
-        class="w-full rounded border border-slate-300 px-3 py-2 text-sm mb-3"
-      >
-        <?php foreach (Ticket::STATUSES as $s): ?>
-          <option
-            value="<?= e($s) ?>"
-            <?= $ticket['status'] === $s ? 'selected' : '' ?>
-          >
-            <?= e(ucwords(str_replace('_', ' ', $s))) ?>
-          </option>
-        <?php endforeach; ?>
-      </select>
+        <label class="block text-sm font-medium mb-2">
+          Ticket status
+        </label>
 
-      <button
-        type="submit"
-        class="w-full bg-slate-900 hover:bg-slate-800 text-white text-sm px-3 py-2 rounded"
-      >
-        Update status
-      </button>
-    </form>
+        <select
+          name="status"
+          class="w-full rounded border border-slate-300 px-3 py-2 text-sm mb-3">
+          <?php foreach (Ticket::STATUSES as $s): ?>
+            <option
+              value="<?= e($s) ?>"
+              <?= $ticket['status'] === $s ? 'selected' : '' ?>>
+              <?= e(ucwords(str_replace('_', ' ', $s))) ?>
+            </option>
+          <?php endforeach; ?>
+        </select>
+
+        <button
+          type="submit"
+          class="w-full bg-slate-900 hover:bg-slate-800 text-white text-sm px-3 py-2 rounded">
+          Update status
+        </button>
+      </form>
 
 
-    <!-- PRIORITY -->
-    <form
-      method="post"
-      action="<?= url('/admin/tickets/' . (int)$ticket['id'] . '/priority') ?>"
-      class="border border-slate-200 rounded-lg p-4"
-    >
-      <?= csrf_field() ?>
+      <!-- PRIORITY -->
+      <form method="post" action="<?= url('/admin/tickets/' . (int)$ticket['id'] . '/status') ?>" class="border border-slate-200 rounded-lg p-4">
 
-      <label class="block text-sm font-medium mb-2">
-        Ticket priority
-      </label>
+        <?= csrf_field() ?>
 
-      <select
-        name="priority"
-        class="w-full rounded border border-slate-300 px-3 py-2 text-sm mb-3"
-      >
-        <?php foreach (Ticket::PRIORITIES as $p): ?>
-          <option
-            value="<?= e($p) ?>"
-            <?= $ticket['priority'] === $p ? 'selected' : '' ?>
-          >
-            <?= e(ucfirst($p)) ?>
-          </option>
-        <?php endforeach; ?>
-      </select>
+        <label class="block text-sm font-medium mb-2">
+          Ticket priority
+        </label>
 
-      <button
-        type="submit"
-        class="w-full bg-slate-900 hover:bg-slate-800 text-white text-sm px-3 py-2 rounded"
-      >
-        Update priority
-      </button>
-    </form>
+        <select
+          name="priority"
+          class="w-full rounded border border-slate-300 px-3 py-2 text-sm mb-3">
+          <?php foreach (Ticket::PRIORITIES as $p): ?>
+            <option
+              value="<?= e($p) ?>"
+              <?= $ticket['priority'] === $p ? 'selected' : '' ?>>
+              <?= e(ucfirst($p)) ?>
+            </option>
+          <?php endforeach; ?>
+        </select>
+
+        <button
+          type="submit"
+          class="w-full bg-slate-900 hover:bg-slate-800 text-white text-sm px-3 py-2 rounded">
+          Update priority
+        </button>
+      </form>
 
 
-    <!-- ASSIGNMENT -->
-    <form
-      method="post"
-      action="<?= url('/admin/tickets/' . (int)$ticket['id'] . '/assign') ?>"
-      class="border border-slate-200 rounded-lg p-4"
-    >
-      <?= csrf_field() ?>
+      <!-- ASSIGNMENT -->
+      <form method="post" action="<?= url('/admin/tickets/' . (int)$ticket['id'] . '/status') ?>" class="border border-slate-200 rounded-lg p-4">
+        <?= csrf_field() ?>
 
-      <label class="block text-sm font-medium mb-2">
-        Assign ticket
-      </label>
+        <label class="block text-sm font-medium mb-2">
+          Assign ticket
+        </label>
 
-      <select
-        name="assigned_to"
-        class="w-full rounded border border-slate-300 px-3 py-2 text-sm mb-3"
-      >
-        <option value="0">Unassigned</option>
+        <select
+          name="assigned_to"
+          class="w-full rounded border border-slate-300 px-3 py-2 text-sm mb-3">
+          <option value="0">Unassigned</option>
 
-        <?php
-        $admins = User::admins();
-        ?>
+          <?php
+          $admins = User::admins();
+          ?>
 
-        <?php foreach ($admins as $admin): ?>
-          <option
-            value="<?= (int)$admin['id'] ?>"
-            <?= (int)($ticket['assigned_to'] ?? 0) === (int)$admin['id'] ? 'selected' : '' ?>
-          >
-            <?= e($admin['name']) ?> — <?= e($admin['email']) ?>
-          </option>
-        <?php endforeach; ?>
-      </select>
+          <?php foreach ($admins as $admin): ?>
+            <option
+              value="<?= (int)$admin['id'] ?>"
+              <?= (int)($ticket['assigned_to'] ?? 0) === (int)$admin['id'] ? 'selected' : '' ?>>
+              <?= e($admin['name']) ?> — <?= e($admin['email']) ?>
+            </option>
+          <?php endforeach; ?>
+        </select>
 
-      <button
-        type="submit"
-        class="w-full bg-indigo-600 hover:bg-indigo-700 text-white text-sm px-3 py-2 rounded"
-      >
-        Save assignment
-      </button>
-    </form>
+        <button
+          type="submit"
+          class="w-full bg-indigo-600 hover:bg-indigo-700 text-white text-sm px-3 py-2 rounded">
+          Save assignment
+        </button>
+      </form>
 
+    </div>
   </div>
-</div>
 
 <?php endif; ?>
 
@@ -184,8 +164,7 @@
       class="bg-white rounded-xl border p-4
       <?= $r['is_internal_note']
         ? 'border-amber-200 bg-amber-50'
-        : 'border-slate-100' ?>"
-    >
+        : 'border-slate-100' ?>">
 
       <div class="flex justify-between text-xs text-slate-500 mb-1">
 
@@ -220,8 +199,7 @@
         <a
           href="<?= e($r['attachment_path']) ?>"
           target="_blank"
-          class="text-indigo-600 text-sm inline-block mt-2"
-        >
+          class="text-indigo-600 text-sm inline-block mt-2">
           Attachment
         </a>
 
@@ -242,12 +220,7 @@
 
 <!-- REPLY FORM -->
 
-<form
-  method="post"
-  action="<?= url('/admin/tickets/' . (int)$ticket['id'] . '/reply') ?>"
-  enctype="multipart/form-data"
-  class="bg-white rounded-xl shadow-sm border border-slate-100 p-4 space-y-3"
->
+<form method="post" action="<?= url('/tickets/' . (int)$ticket['id'] . '/reply') ?>" enctype="multipart/form-data" class="bg-white rounded-xl shadow-sm border border-slate-100 p-4 space-y-3">
 
   <?= csrf_field() ?>
 
@@ -256,16 +229,14 @@
     rows="3"
     required
     placeholder="Write a reply..."
-    class="w-full rounded border border-slate-300 px-3 py-2"
-  ></textarea>
+    class="w-full rounded border border-slate-300 px-3 py-2"></textarea>
 
   <div class="flex items-center justify-between">
 
     <input
       type="file"
       name="attachment"
-      class="text-sm"
-    >
+      class="text-sm">
 
     <div class="flex items-center gap-3">
 
@@ -275,8 +246,7 @@
           <input
             type="checkbox"
             name="internal"
-            value="1"
-          >
+            value="1">
           Internal note
         </label>
 
@@ -284,8 +254,7 @@
 
       <button
         type="submit"
-        class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded text-sm"
-      >
+        class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded text-sm">
         Send reply
       </button>
 

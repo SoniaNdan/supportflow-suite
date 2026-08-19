@@ -1,93 +1,247 @@
 <?php
+
 declare(strict_types=1);
 
 final class TicketController
 {
-    public function index(): void {
+    public function index(): void
+    {
         AuthMiddleware::handle();
+
         $filters = [
-            'status'   => $_GET['status']   ?? null,
+            'status'   => $_GET['status'] ?? null,
             'priority' => $_GET['priority'] ?? null,
-            'q'        => $_GET['q']        ?? null,
+            'q'        => $_GET['q'] ?? null,
         ];
-        $tickets = Ticket::forUser((int)auth_id(), $filters);
-        view('tickets/index', ['title' => 'My tickets', 'tickets' => $tickets, 'filters' => $filters]);
+
+        $tickets = Ticket::forUser((int) auth_id(), $filters);
+
+        view('tickets/index', [
+            'title' => 'My tickets',
+            'tickets' => $tickets,
+            'filters' => $filters
+        ]);
     }
 
-    public function create(): void {
+
+    public function create(): void
+    {
         AuthMiddleware::handle();
-        view('tickets/create', ['title' => 'New ticket']);
+
+        view('tickets/create', [
+            'title' => 'New ticket'
+        ]);
     }
 
-    public function store(): void {
+
+    public function store(): void
+    {
         AuthMiddleware::handle();
         csrf_verify();
+
         $v = (new Validator($_POST))
             ->required('title')->max('title', 200)
             ->required('category')->max('category', 100)
             ->required('priority')->in('priority', Ticket::PRIORITIES)
             ->required('description')->max('description', 5000);
+
         if (!$v->passes()) {
             remember_old($_POST);
-            flash('error', implode(' ', $v->errors));
+
+            flash(
+                'error',
+                implode(' ', $v->errors)
+            );
+
             redirect('/tickets/new');
         }
-        try { $attachment = handle_upload('attachment'); }
-        catch (Throwable $e) { flash('error', $e->getMessage()); redirect('/tickets/new'); }
+
+        try {
+            $attachment = handle_upload('attachment');
+        } catch (Throwable $e) {
+            flash('error', $e->getMessage());
+            redirect('/tickets/new');
+        }
 
         $id = Ticket::create([
             'user_id' => auth_id(),
-            'title' => $_POST['title'],
-            'category' => $_POST['category'],
-            'priority' => $_POST['priority'],
-            'description' => $_POST['description'],
+            'title' => trim((string) $_POST['title']),
+            'category' => trim((string) $_POST['category']),
+            'priority' => (string) $_POST['priority'],
+            'description' => trim((string) $_POST['description']),
             'attachment_path' => $attachment ?? null,
         ]);
-        ActivityLog::log(auth_id(), 'ticket.create', "Created ticket #$id");
+
+        ActivityLog::log(
+            auth_id(),
+            'ticket.create',
+            "Created ticket #$id"
+        );
+
+        // Notify admins that a new ticket was created
+        foreach (
+            Database::conn()->query(
+                "SELECT id FROM users WHERE role = 'admin' AND status = 'active'"
+            ) as $admin
+        ) {
+            Notification::create(
+                (int) $admin['id'],
+                'New ticket created',
+                'A new ticket has been submitted: ' .
+                    generate_ticket_notification_text($id)
+            );
+        }
+
         flash('success', 'Ticket submitted.');
+
         redirect('/tickets/' . $id);
     }
 
-    public function show(int $id): void {
+
+    public function show(int $id): void
+    {
         AuthMiddleware::handle();
+
         $t = Ticket::find($id);
-        if (!$t) { http_response_code(404); exit('Ticket not found.'); }
-        if (!auth_is_admin() && (int)$t['user_id'] !== auth_id()) {
-            http_response_code(403); exit('Forbidden.');
+
+        if (!$t) {
+            http_response_code(404);
+            exit('Ticket not found.');
         }
-        $replies = Reply::forTicket($id, auth_is_admin());
-        view('tickets/show', ['title' => $t['ticket_no'], 'ticket' => $t, 'replies' => $replies]);
+
+        // Normal users can only view their own tickets.
+        // Admins can view every ticket.
+        if (
+            !auth_is_admin() &&
+            (int) $t['user_id'] !== auth_id()
+        ) {
+            http_response_code(403);
+            exit('Forbidden.');
+        }
+
+        $replies = Reply::forTicket(
+            $id,
+            auth_is_admin()
+        );
+
+        view('tickets/show', [
+            'title' => $t['ticket_no'],
+            'ticket' => $t,
+            'replies' => $replies
+        ]);
     }
 
-    public function reply(int $id): void {
+
+    public function reply(int $id): void
+    {
         AuthMiddleware::handle();
         csrf_verify();
-        $t = Ticket::find($id);
-        if (!$t) { http_response_code(404); exit('Not found.'); }
-        if (!auth_is_admin() && (int)$t['user_id'] !== auth_id()) { http_response_code(403); exit('Forbidden.'); }
-        $msg = trim((string)($_POST['message'] ?? ''));
-        if ($msg === '') { flash('error', 'Reply cannot be empty.'); redirect('/tickets/' . $id); }
-        $attachment = null;
-        try { $attachment = handle_upload('attachment'); }
-        catch (Throwable $e) { flash('error', $e->getMessage()); redirect('/tickets/' . $id); }
 
+        $t = Ticket::find($id);
+
+        if (!$t) {
+            http_response_code(404);
+            exit('Not found.');
+        }
+
+        if (!auth_is_admin() && (int)$t['user_id'] !== auth_id()) {
+            http_response_code(403);
+            exit('Forbidden.');
+        }
+
+        $msg = trim((string)($_POST['message'] ?? ''));
+
+        if ($msg === '') {
+            flash('error', 'Reply cannot be empty.');
+            redirect('/tickets/' . $id);
+        }
+
+        $attachment = null;
+
+        try {
+            $attachment = handle_upload('attachment');
+        } catch (Throwable $e) {
+            flash('error', $e->getMessage());
+            redirect('/tickets/' . $id);
+        }
+
+        $isInternal = auth_is_admin() && !empty($_POST['internal']);
+
+        // Create the reply
         Reply::create([
-            'ticket_id' => $id, 'user_id' => auth_id(), 'message' => $msg,
+            'ticket_id' => $id,
+            'user_id' => auth_id(),
+            'message' => $msg,
             'attachment_path' => $attachment,
-            'is_internal_note' => auth_is_admin() && !empty($_POST['internal']),
+            'is_internal_note' => $isInternal,
         ]);
 
-        // Notify the other party
-        $notifyUser = auth_is_admin() ? (int)$t['user_id'] : null;
-        if (!auth_is_admin()) {
-            // notify all admins
-            foreach (Database::conn()->query("SELECT id FROM users WHERE role='admin'") as $a) {
-                Notification::create((int)$a['id'], 'New reply on ' . $t['ticket_no'], substr($msg, 0, 200));
+        /*
+     * Notifications
+     *
+     * Internal admin notes:
+     * - Do NOT notify the user.
+     *
+     * Admin normal reply:
+     * - Notify the ticket owner.
+     *
+     * User reply:
+     * - Notify all admins.
+     */
+        if (auth_is_admin()) {
+
+            if (!$isInternal) {
+                $notifyUser = (int)$t['user_id'];
+
+                Notification::create(
+                    $notifyUser,
+                    'New reply on ' . $t['ticket_no'],
+                    substr($msg, 0, 200)
+                );
             }
-        } elseif ($notifyUser) {
-            Notification::create($notifyUser, 'New reply on ' . $t['ticket_no'], substr($msg, 0, 200));
+        } else {
+
+            // User replied — notify all admins
+            $stmt = Database::conn()->query(
+                "SELECT id FROM users WHERE role = 'admin' AND status = 'active'"
+            );
+
+            foreach ($stmt as $admin) {
+                Notification::create(
+                    (int)$admin['id'],
+                    'New reply on ' . $t['ticket_no'],
+                    substr($msg, 0, 200)
+                );
+            }
         }
-        flash('success', 'Reply posted.');
+
+        ActivityLog::log(
+            auth_id(),
+            $isInternal ? 'ticket.internal_note' : 'ticket.reply',
+            ($isInternal ? 'Added internal note to #' : 'Replied to #') . $id
+        );
+
+        flash(
+            'success',
+            $isInternal ? 'Internal note added.' : 'Reply posted.'
+        );
+
         redirect('/tickets/' . $id);
     }
+}
+
+
+/*
+ * Small helper used when notifying admins
+ * about a newly created ticket.
+ */
+function generate_ticket_notification_text(int $ticketId): string
+{
+    $ticket = Ticket::find($ticketId);
+
+    if (!$ticket) {
+        return 'Ticket #' . $ticketId;
+    }
+
+    return $ticket['ticket_no'] . ' — ' . $ticket['title'];
 }
