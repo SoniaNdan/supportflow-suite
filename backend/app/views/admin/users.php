@@ -12,7 +12,7 @@
       <td class="p-3"><?= e($u['status']) ?></td>
       <td class="p-3 text-slate-500"><?= e(date('M j, Y', strtotime($u['created_at']))) ?></td>
       <td class="p-3">
-        <form method="post" action="/admin/users/<?= (int)$u['id'] ?>/status" class="flex gap-2"><?= csrf_field() ?>
+        <form method="post" action="<?= url('/admin/users/' . (int)$u['id'] . '/status') ?>" class="flex gap-2"><?= csrf_field() ?>
           <input type="hidden" name="status" value="<?= $u['status']==='active'?'suspended':'active' ?>">
           <button class="text-xs <?= $u['status']==='active'?'text-rose-600':'text-emerald-600' ?>"><?= $u['status']==='active'?'Suspend':'Reactivate' ?></button>
         </form>
