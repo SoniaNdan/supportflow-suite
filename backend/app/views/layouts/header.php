@@ -9,7 +9,7 @@
 <body class="bg-slate-50 text-slate-800">
 <nav class="bg-white border-b border-slate-200">
   <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
-    <a href="/" class="font-bold text-indigo-600"><?= APP_NAME ?></a>
+    <a href=<?= url('/') ?> class="font-bold text-indigo-600"><?= APP_NAME ?></a>
     <div class="flex gap-4 text-sm">
       <?php if (auth_check()): ?>
         <a href="<?= url('/dashboard') ?>" class="hover:text-indigo-600">Dashboard</a>
