@@ -7,6 +7,14 @@ function auth_user(): ?array {
 function auth_check(): bool { return auth_user() !== null; }
 function auth_id(): ?int { return auth_user()['id'] ?? null; }
 function auth_is_admin(): bool { return (auth_user()['role'] ?? '') === 'admin'; }
+function auth_is_support_admin(): bool
+{
+    return auth_is_admin() && (auth_user()['admin_level'] ?? '') === 'support_admin';
+}
+function auth_is_system_admin(): bool
+{
+    return auth_is_admin() && (auth_user()['admin_level'] ?? '') === 'system_admin';
+}
 
 function auth_login(array $user): void {
     session_regenerate_id(true);
@@ -15,6 +23,7 @@ function auth_login(array $user): void {
         'name' => $user['name'],
         'email' => $user['email'],
         'role' => $user['role'],
+        'admin_level' => $user['admin_level'] ?? null,
     ];
 }
 

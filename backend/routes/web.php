@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /**
@@ -38,6 +39,8 @@ return [
     ['POST', '/admin/tickets/{id}/status',     [AdminController::class, 'updateStatus']],
     ['POST', '/admin/tickets/{id}/priority',   [AdminController::class, 'updatePriority']],
     ['POST', '/admin/tickets/{id}/assign',     [AdminController::class, 'assign']],
+    ['POST', '/admin/tickets/{id}/revoke',     [AdminController::class, 'revokeAssignment']],
     ['GET',  '/admin/users',                   [AdminController::class, 'users']],
+    ['POST', '/admin/users/create',             [AdminController::class, 'createAdmin']],
     ['POST', '/admin/users/{id}/status',       [AdminController::class, 'setUserStatus']],
 ];

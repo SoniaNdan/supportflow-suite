@@ -13,6 +13,7 @@
         By <?= e($ticket['user_name']) ?>
         · <?= e($ticket['category']) ?>
         · <?= e(date('M j, Y', strtotime($ticket['created_at']))) ?>
+        · <?= $ticket['assigned_name'] ? 'Assigned to ' . e($ticket['assigned_name']) : 'Unassigned' ?>
       </div>
     </div>
 
@@ -33,9 +34,11 @@
 
   <?php if (!empty($ticket['attachment_path'])): ?>
     <a
-      href="<?= e($ticket['attachment_path']) ?>"
-      class="inline-block mt-3 text-indigo-600 text-sm"
-      target="_blank">
+      href="<?= e(url($ticket['attachment_path'])) ?>"
+      class="inline-flex items-center mt-3 text-indigo-600 hover:text-indigo-800 text-sm font-medium"
+      target="_blank"
+      rel="noopener noreferrer"
+      download>
       Download attachment
     </a>
   <?php endif; ?>
@@ -54,7 +57,10 @@
     <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
 
       <!-- STATUS -->
-      <form method="post" action="<?= url('/admin/tickets/' . (int)$ticket['id'] . '/status') ?>" class="border border-slate-200 rounded-lg p-4">
+      <form
+        method="post"
+        action="<?= url('/admin/tickets/' . (int)$ticket['id'] . '/status') ?>"
+        class="border border-slate-200 rounded-lg p-4">
 
         <?= csrf_field() ?>
 
@@ -65,6 +71,7 @@
         <select
           name="status"
           class="w-full rounded border border-slate-300 px-3 py-2 text-sm mb-3">
+
           <?php foreach (Ticket::STATUSES as $s): ?>
             <option
               value="<?= e($s) ?>"
@@ -72,6 +79,7 @@
               <?= e(ucwords(str_replace('_', ' ', $s))) ?>
             </option>
           <?php endforeach; ?>
+
         </select>
 
         <button
@@ -79,11 +87,15 @@
           class="w-full bg-slate-900 hover:bg-slate-800 text-white text-sm px-3 py-2 rounded">
           Update status
         </button>
+
       </form>
 
 
       <!-- PRIORITY -->
-      <form method="post" action="<?= url('/admin/tickets/' . (int)$ticket['id'] . '/status') ?>" class="border border-slate-200 rounded-lg p-4">
+      <form
+        method="post"
+        action="<?= url('/admin/tickets/' . (int)$ticket['id'] . '/priority') ?>"
+        class="border border-slate-200 rounded-lg p-4">
 
         <?= csrf_field() ?>
 
@@ -94,6 +106,7 @@
         <select
           name="priority"
           class="w-full rounded border border-slate-300 px-3 py-2 text-sm mb-3">
+
           <?php foreach (Ticket::PRIORITIES as $p): ?>
             <option
               value="<?= e($p) ?>"
@@ -101,6 +114,7 @@
               <?= e(ucfirst($p)) ?>
             </option>
           <?php endforeach; ?>
+
         </select>
 
         <button
@@ -108,11 +122,17 @@
           class="w-full bg-slate-900 hover:bg-slate-800 text-white text-sm px-3 py-2 rounded">
           Update priority
         </button>
+
       </form>
 
 
       <!-- ASSIGNMENT -->
-      <form method="post" action="<?= url('/admin/tickets/' . (int)$ticket['id'] . '/status') ?>" class="border border-slate-200 rounded-lg p-4">
+      <?php if (auth_is_system_admin()): ?>
+      <form
+        method="post"
+        action="<?= url('/admin/tickets/' . (int)$ticket['id'] . '/assign') ?>"
+        class="border border-slate-200 rounded-lg p-4">
+
         <?= csrf_field() ?>
 
         <label class="block text-sm font-medium mb-2">
@@ -122,6 +142,7 @@
         <select
           name="assigned_to"
           class="w-full rounded border border-slate-300 px-3 py-2 text-sm mb-3">
+
           <option value="0">Unassigned</option>
 
           <?php
@@ -135,6 +156,7 @@
               <?= e($admin['name']) ?> — <?= e($admin['email']) ?>
             </option>
           <?php endforeach; ?>
+
         </select>
 
         <button
@@ -142,7 +164,15 @@
           class="w-full bg-indigo-600 hover:bg-indigo-700 text-white text-sm px-3 py-2 rounded">
           Save assignment
         </button>
+
       </form>
+      <?php if (!empty($ticket['assigned_to'])): ?>
+        <form method="post" action="<?= url('/admin/tickets/' . (int)$ticket['id'] . '/revoke') ?>" class="mt-3">
+          <?= csrf_field() ?>
+          <button type="submit" class="w-full rounded border border-rose-200 px-3 py-2 text-sm font-medium text-rose-700 hover:bg-rose-50">Revoke assignment</button>
+        </form>
+      <?php endif; ?>
+      <?php endif; ?>
 
     </div>
   </div>
@@ -197,10 +227,12 @@
       <?php if (!empty($r['attachment_path'])): ?>
 
         <a
-          href="<?= e($r['attachment_path']) ?>"
+          href="<?= e(url($r['attachment_path'])) ?>"
           target="_blank"
-          class="text-indigo-600 text-sm inline-block mt-2">
-          Attachment
+          rel="noopener noreferrer"
+          download
+          class="text-indigo-600 hover:text-indigo-800 text-sm inline-flex items-center mt-2 font-medium">
+          Download attachment
         </a>
 
       <?php endif; ?>
@@ -208,6 +240,7 @@
     </div>
 
   <?php endforeach; ?>
+
 
   <?php if (!$replies): ?>
     <div class="text-slate-500 text-sm">
@@ -220,7 +253,11 @@
 
 <!-- REPLY FORM -->
 
-<form method="post" action="<?= url('/tickets/' . (int)$ticket['id'] . '/reply') ?>" enctype="multipart/form-data" class="bg-white rounded-xl shadow-sm border border-slate-100 p-4 space-y-3">
+<form
+  method="post"
+  action="<?= url('/tickets/' . (int)$ticket['id'] . '/reply') ?>"
+  enctype="multipart/form-data"
+  class="bg-white rounded-xl shadow-sm border border-slate-100 p-4 space-y-3">
 
   <?= csrf_field() ?>
 

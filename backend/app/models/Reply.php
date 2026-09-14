@@ -23,6 +23,10 @@ final class Reply
             $d['ticket_id'], $d['user_id'], $d['message'],
             $d['attachment_path'] ?? null, !empty($d['is_internal_note']) ? 1 : 0,
         ]);
+        if (empty($d['is_internal_note'])) {
+            Database::conn()->prepare('UPDATE tickets SET updated_at = NOW() WHERE id = ?')
+                ->execute([$d['ticket_id']]);
+        }
         return (int)Database::conn()->lastInsertId();
     }
 }

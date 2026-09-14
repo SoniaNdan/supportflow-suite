@@ -36,29 +36,47 @@ final class User
         string $name,
         string $email,
         string $passwordHash,
-        string $role = 'user'
+        string $role = 'user',
+        ?string $adminLevel = null
     ): int {
         $s = Database::conn()->prepare(
             'INSERT INTO users
-            (name, email, password_hash, role, status, created_at, updated_at)
-            VALUES (?, ?, ?, ?, "active", NOW(), NOW())'
+            (name, email, password_hash, role, admin_level, status, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, "active", NOW(), NOW())'
         );
+
+        $effectiveLevel = $role === 'admin'
+            ? ($adminLevel ?: 'support_admin')
+            : null;
 
         $s->execute([
             $name,
             $email,
             $passwordHash,
-            $role
+            $role,
+            $effectiveLevel
         ]);
 
         return (int) Database::conn()->lastInsertId();
+    }
+
+    public static function isSystemAdmin(int $id): bool
+    {
+        $user = self::find($id);
+        return $user !== null && (string)($user['role'] ?? '') === 'admin' && (string)($user['admin_level'] ?? '') === 'system_admin';
+    }
+
+    public static function isSupportAdmin(int $id): bool
+    {
+        $user = self::find($id);
+        return $user !== null && (string)($user['role'] ?? '') === 'admin' && (string)($user['admin_level'] ?? '') === 'support_admin';
     }
 
 
     public static function all(): array
     {
         return Database::conn()->query(
-            'SELECT id, name, email, role, status, created_at
+            'SELECT id, name, email, role, admin_level, status, created_at
              FROM users
              ORDER BY created_at DESC'
         )->fetchAll();
@@ -72,7 +90,7 @@ final class User
     public static function admins(): array
     {
         return Database::conn()->query(
-            "SELECT id, name, email
+            "SELECT id, name, email, admin_level
              FROM users
              WHERE role = 'admin'
              AND status = 'active'
@@ -93,6 +111,15 @@ final class User
             $status,
             $id
         ]);
+    }
+
+    public static function setAdminLevel(int $id, string $level): void
+    {
+        $s = Database::conn()->prepare(
+            'UPDATE users SET admin_level = ?, updated_at = NOW()
+             WHERE id = ? AND role = "admin"'
+        );
+        $s->execute([$level, $id]);
     }
 
 

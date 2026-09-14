@@ -14,7 +14,11 @@ final class TicketController
             'q'        => $_GET['q'] ?? null,
         ];
 
-        $tickets = Ticket::forUser((int) auth_id(), $filters);
+        $tickets = auth_is_system_admin()
+            ? Ticket::all($filters, (int) auth_id(), true)
+            : (auth_is_support_admin()
+                ? Ticket::all($filters, (int) auth_id(), false)
+                : Ticket::forUser((int) auth_id(), $filters));
 
         view('tickets/index', [
             'title' => 'My tickets',
@@ -109,20 +113,20 @@ final class TicketController
             exit('Ticket not found.');
         }
 
-        // Normal users can only view their own tickets.
-        // Admins can view every ticket.
-        if (
-            !auth_is_admin() &&
-            (int) $t['user_id'] !== auth_id()
-        ) {
-            http_response_code(403);
-            exit('Forbidden.');
+        // Normal users own their tickets; support admins only see assigned tickets.
+        if (!auth_is_admin() && (int) $t['user_id'] !== auth_id()) {
+            forbidden('You do not have permission to view this ticket.');
+        }
+        if (auth_is_support_admin() && (int) ($t['assigned_to'] ?? 0) !== (int) auth_id()) {
+            forbidden('Support Administrators can only access tickets assigned to them.');
         }
 
         $replies = Reply::forTicket(
             $id,
             auth_is_admin()
         );
+
+        Ticket::markRead($id, (int) auth_id());
 
         view('tickets/show', [
             'title' => $t['ticket_no'],
@@ -145,8 +149,10 @@ final class TicketController
         }
 
         if (!auth_is_admin() && (int)$t['user_id'] !== auth_id()) {
-            http_response_code(403);
-            exit('Forbidden.');
+            forbidden('You do not have permission to reply to this ticket.');
+        }
+        if (auth_is_support_admin() && (int) ($t['assigned_to'] ?? 0) !== (int) auth_id()) {
+            forbidden('Support Administrators can only reply to tickets assigned to them.');
         }
 
         $msg = trim((string)($_POST['message'] ?? ''));
@@ -201,10 +207,11 @@ final class TicketController
             }
         } else {
 
-            // User replied — notify all admins
-            $stmt = Database::conn()->query(
-                "SELECT id FROM users WHERE role = 'admin' AND status = 'active'"
-            );
+            // Prefer the responsible admin; unassigned tickets go to active admins.
+            $stmt = $t['assigned_to']
+                ? Database::conn()->prepare("SELECT id FROM users WHERE id = ? AND role = 'admin' AND status = 'active'")
+                : Database::conn()->query("SELECT id FROM users WHERE role = 'admin' AND status = 'active'");
+            if ($t['assigned_to']) $stmt->execute([(int)$t['assigned_to']]);
 
             foreach ($stmt as $admin) {
                 Notification::create(

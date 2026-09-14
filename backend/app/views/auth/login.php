@@ -8,6 +8,6 @@
       <input type="password" name="password" required class="w-full rounded border border-slate-300 px-3 py-2"></div>
     <button class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded py-2">Sign in</button>
   </form>
-  <p class="text-sm mt-4 text-slate-500">No account? <a href="<?= url('/register') ?>" class="text-indigo-600">Register</a> · <a href="<?= BASE_URL ?>/forgot-password" class="text-indigo-600">Forgot password?</a></p>
+  <p class="text-sm mt-4 text-slate-500">No account? <a href="<?= url('/register') ?>" class="text-indigo-600">Register</a> · <a href="<?= url('/forgot-password') ?>" class="text-indigo-600">Forgot password?</a></p>
 </div>
 <?php clear_old(); ?>

@@ -4,6 +4,7 @@ SET FOREIGN_KEY_CHECKS = 0;
 
 DROP TABLE IF EXISTS activity_logs;
 DROP TABLE IF EXISTS password_resets;
+DROP TABLE IF EXISTS ticket_reads;
 DROP TABLE IF EXISTS notifications;
 DROP TABLE IF EXISTS replies;
 DROP TABLE IF EXISTS tickets;
@@ -16,6 +17,7 @@ CREATE TABLE users (
   email VARCHAR(190) NOT NULL UNIQUE,
   password_hash VARCHAR(255) NOT NULL,
   role ENUM('user','admin') NOT NULL DEFAULT 'user',
+  admin_level ENUM('system_admin','support_admin') NULL,
   status ENUM('active','suspended') NOT NULL DEFAULT 'active',
   created_at DATETIME NOT NULL,
   updated_at DATETIME NOT NULL
@@ -52,6 +54,17 @@ CREATE TABLE replies (
   CONSTRAINT fk_replies_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+CREATE TABLE ticket_reads (
+  id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  ticket_id INT UNSIGNED NOT NULL,
+  user_id INT UNSIGNED NOT NULL,
+  last_read_at DATETIME NOT NULL,
+  UNIQUE KEY uq_ticket_read_user (ticket_id, user_id),
+  INDEX (user_id, last_read_at),
+  CONSTRAINT fk_ticket_reads_ticket FOREIGN KEY (ticket_id) REFERENCES tickets(id) ON DELETE CASCADE,
+  CONSTRAINT fk_ticket_reads_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
 CREATE TABLE notifications (
   id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   user_id INT UNSIGNED NOT NULL,
@@ -73,11 +86,11 @@ CREATE TABLE settings (
 CREATE TABLE password_resets (
   id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   user_id INT UNSIGNED NOT NULL,
-  token VARCHAR(255) NOT NULL,
+  token_hash CHAR(64) NOT NULL,
   expires_at DATETIME NOT NULL,
   used_at DATETIME NULL,
   created_at DATETIME NOT NULL,
-  INDEX (token),
+  UNIQUE KEY uq_password_reset_token (token_hash),
   CONSTRAINT fk_pr_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 

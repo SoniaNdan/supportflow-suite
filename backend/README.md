@@ -29,6 +29,7 @@ backend/
 ├── database/
 │   ├── schema.sql
 │   └── seed.sql
+│   └── migration_20260914_admin_notifications_reads.sql
 ├── storage/logs/
 └── README.md
 ```
@@ -52,16 +53,19 @@ backend/
    ```bash
    chmod -R 0775 public/uploads storage/logs
    ```
+7. **Upgrade an existing database** by running
+   `database/migration_20260914_admin_notifications_reads.sql` once. Fresh
+   installs should use the updated `schema.sql` instead.
 6. **Point your virtual host** to `backend/public/`.
    For XAMPP, browse to `http://localhost/resolvedesk/public/`.
    The included root `.htaccess` also forwards requests to `/public` so the
    project URL works directly.
 
 ## Default accounts
-| Role  | Email               | Password   |
-|-------|---------------------|------------|
-| admin | admin@example.com   | Admin123!  |
-| user  | jane@example.com    | Admin123!  |
+| Role          | Email             | Password  |
+|---------------|-------------------|-----------|
+| System Admin  | admin@example.com | Admin123! |
+| User          | jane@example.com  | Admin123! |
 
 ## Routes
 See `routes/web.php` for the full list. Highlights:
@@ -88,7 +92,11 @@ JSON (AJAX): `GET /api/notifications`, `GET /api/tickets/search`, `GET /api/dash
 - `password_hash()` / `password_verify()` (bcrypt).
 - File uploads validated by MIME type + size; uploads directory has PHP
   execution disabled via `.htaccess`.
-- Role-based authorization via `AuthMiddleware` / `AdminMiddleware`.
+- Role-based authorization via `AuthMiddleware`, `AdminMiddleware`, and
+   `SystemAdminMiddleware`; only the system admin manages accounts.
+- Notifications are user-scoped and show an unread navbar count. Ticket read
+   state is tracked per user in `ticket_reads`, with internal notes hidden from
+   normal-user unread calculations.
 - Errors logged to `storage/logs/php-error.log` and `app.log`; users see
   friendly 404/500 pages.
 

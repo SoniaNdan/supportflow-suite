@@ -73,32 +73,53 @@ final class AuthController
         if ($u) {
             $token = bin2hex(random_bytes(32));
             $s = Database::conn()->prepare(
-                'INSERT INTO password_resets (user_id, token, expires_at, created_at)
+                'DELETE FROM password_resets WHERE user_id = ? OR expires_at < NOW()'
+            );
+            $s->execute([(int)$u['id']]);
+            $s = Database::conn()->prepare(
+                'INSERT INTO password_resets (user_id, token_hash, expires_at, created_at)
                  VALUES (?, ?, DATE_ADD(NOW(), INTERVAL 1 HOUR), NOW())'
             );
             $s->execute([$u['id'], hash('sha256', $token)]);
-            log_event("Password reset link for {$email}: " . BASE_URL . "/reset-password?token=$token");
+            $resetLink = BASE_URL . '/reset-password?token=' . urlencode($token);
+            $mailBody = "Use this link within one hour to reset your ResolveDesk password:\n\n" . $resetLink;
+            $sent = @mail($email, 'ResolveDesk password reset', $mailBody, "From: " . (getenv('MAIL_FROM') ?: 'no-reply@localhost'));
+            if (!$sent) {
+                log_event("Password reset link for {$email}: " . $resetLink);
+            }
         }
-        flash('success', 'If that email exists, a reset link has been generated (check storage/logs/app.log in dev).');
+        flash('success', 'If an account with that email exists, a password reset link has been sent.');
         redirect('/login');
     }
 
     public function showReset(): void {
         $token = (string)($_GET['token'] ?? '');
-        view('auth/reset', ['title' => 'Reset password', 'token' => $token]);
+        $valid = false;
+        if (preg_match('/^[a-f0-9]{64}$/', $token)) {
+            $s = Database::conn()->prepare(
+                'SELECT id FROM password_resets WHERE token_hash = ? AND used_at IS NULL AND expires_at > NOW() LIMIT 1'
+            );
+            $s->execute([hash('sha256', $token)]);
+            $valid = (bool)$s->fetchColumn();
+        }
+        view('auth/reset', ['title' => 'Reset password', 'token' => $token, 'valid' => $valid]);
     }
 
     public function reset(): void {
         csrf_verify();
         $token = (string)($_POST['token'] ?? '');
         $pw = (string)($_POST['password'] ?? '');
-        if (strlen($pw) < 8) { flash('error', 'Password must be 8+ characters.'); redirect('/reset-password?token=' . urlencode($token)); }
+        $confirm = (string)($_POST['password_confirmation'] ?? '');
+        if (strlen($pw) < 8 || $pw !== $confirm) {
+            flash('error', $pw !== $confirm ? 'Passwords do not match.' : 'Password must be at least 8 characters.');
+            redirect('/reset-password?token=' . urlencode($token));
+        }
         $s = Database::conn()->prepare(
-            'SELECT * FROM password_resets WHERE token = ? AND used_at IS NULL AND expires_at > NOW() ORDER BY id DESC LIMIT 1'
+            'SELECT * FROM password_resets WHERE token_hash = ? AND used_at IS NULL AND expires_at > NOW() ORDER BY id DESC LIMIT 1'
         );
         $s->execute([hash('sha256', $token)]);
         $row = $s->fetch();
-        if (!$row) { flash('error', 'Reset link invalid or expired.'); redirect('/login'); }
+        if (!$row) { flash('error', 'That reset link is invalid or expired.'); redirect('/forgot-password'); }
         User::updatePassword((int)$row['user_id'], password_hash($pw, PASSWORD_BCRYPT));
         Database::conn()->prepare('UPDATE password_resets SET used_at = NOW() WHERE id = ?')->execute([$row['id']]);
         flash('success', 'Password updated. Please sign in.');

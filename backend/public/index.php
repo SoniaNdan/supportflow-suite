@@ -27,7 +27,7 @@ $method = $_SERVER['REQUEST_METHOD'];
 $uri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH) ?? '/';
 
 // Base folder where the backend is installed
-$basePath = '/dashboard/PROJECTS/supportflow-suite/backend/public';
+$basePath = rtrim(str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME'] ?? '')), '/');
 
 // Remove the base path from the request
 if (str_starts_with($uri, $basePath)) {

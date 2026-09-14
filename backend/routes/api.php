@@ -15,7 +15,9 @@ return function (string $method, string $path): void {
     if ($method === 'GET' && $path === '/api/tickets/search') {
         AuthMiddleware::handle();
         $filters = ['status' => $_GET['status'] ?? null, 'priority' => $_GET['priority'] ?? null, 'q' => $_GET['q'] ?? null];
-        $data = auth_is_admin() ? Ticket::all($filters) : Ticket::forUser((int)auth_id(), $filters);
+        $data = auth_is_admin()
+            ? Ticket::all($filters, (int)auth_id())
+            : Ticket::forUser((int)auth_id(), $filters);
         json_response(['tickets' => $data]);
     }
     if ($method === 'GET' && $path === '/api/dashboard/stats') {

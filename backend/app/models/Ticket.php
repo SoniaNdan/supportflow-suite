@@ -43,9 +43,12 @@ final class Ticket
             'SELECT
                 t.*,
                 u.name AS user_name,
-                u.email AS user_email
+                u.email AS user_email,
+                a.name AS assigned_name,
+                a.email AS assigned_email
              FROM tickets t
              JOIN users u ON u.id = t.user_id
+             LEFT JOIN users a ON a.id = t.assigned_to
              WHERE t.id = ?'
         );
 
@@ -62,9 +65,12 @@ final class Ticket
             'SELECT
                 t.*,
                 u.name AS user_name,
-                u.email AS user_email
+                     u.email AS user_email,
+                     a.name AS assigned_name,
+                     a.email AS assigned_email
              FROM tickets t
              JOIN users u ON u.id = t.user_id
+                 LEFT JOIN users a ON a.id = t.assigned_to
              WHERE t.ticket_no = ?'
         );
 
@@ -78,19 +84,32 @@ final class Ticket
     /**
      * Get tickets belonging to a specific user.
      */
-    public static function forUser(int $userId, array $filters = []): array
+    public static function forUser(int $userId, array $filters = [], bool $isAdmin = false): array
     {
         $sql = '
             SELECT
                 t.*,
                 u.name AS user_name,
-                u.email AS user_email
+                u.email AS user_email,
+                a.name AS assigned_name,
+                a.email AS assigned_email,
+                tr.last_read_at,
+                CASE WHEN COALESCE(tr.last_read_at, "1000-01-01") < GREATEST(t.updated_at, COALESCE(ta.last_activity_at, t.created_at))
+                     THEN 1 ELSE 0 END AS is_unread
             FROM tickets t
             JOIN users u ON u.id = t.user_id
+            LEFT JOIN users a ON a.id = t.assigned_to
+            LEFT JOIN ticket_reads tr ON tr.ticket_id = t.id AND tr.user_id = ?
+            LEFT JOIN (
+                SELECT ticket_id, MAX(created_at) AS last_activity_at
+                FROM replies
+                WHERE is_internal_note = 0 OR ? = 1
+                GROUP BY ticket_id
+            ) ta ON ta.ticket_id = t.id
             WHERE t.user_id = ?
         ';
 
-        $args = [$userId];
+        $args = [$userId, $isAdmin ? 1 : 0, $userId];
 
         self::applyFilters($sql, $args, $filters);
 
@@ -105,19 +124,36 @@ final class Ticket
     /**
      * Get all tickets for administrators.
      */
-    public static function all(array $filters = []): array
+    public static function all(array $filters = [], ?int $userId = null, bool $systemAdmin = true): array
     {
         $sql = '
             SELECT
                 t.*,
                 u.name AS user_name,
-                u.email AS user_email
+                u.email AS user_email,
+                a.name AS assigned_name,
+                a.email AS assigned_email,
+                tr.last_read_at,
+                CASE WHEN COALESCE(tr.last_read_at, "1000-01-01") < GREATEST(t.updated_at, COALESCE(ta.last_activity_at, t.created_at))
+                     THEN 1 ELSE 0 END AS is_unread
             FROM tickets t
             JOIN users u ON u.id = t.user_id
+            LEFT JOIN users a ON a.id = t.assigned_to
+            LEFT JOIN ticket_reads tr ON tr.ticket_id = t.id AND tr.user_id = ?
+            LEFT JOIN (
+                SELECT ticket_id, MAX(created_at) AS last_activity_at
+                FROM replies
+                GROUP BY ticket_id
+            ) ta ON ta.ticket_id = t.id
             WHERE 1=1
         ';
 
-        $args = [];
+        $args = [$userId ?? 0];
+
+        if (!$systemAdmin) {
+            $sql .= ' AND t.assigned_to = ?';
+            $args[] = $userId;
+        }
 
         self::applyFilters($sql, $args, $filters);
 
@@ -127,6 +163,16 @@ final class Ticket
         $s->execute($args);
 
         return $s->fetchAll();
+    }
+
+    public static function markRead(int $ticketId, int $userId): void
+    {
+        $s = Database::conn()->prepare(
+            'INSERT INTO ticket_reads (ticket_id, user_id, last_read_at)
+             VALUES (?, ?, NOW())
+             ON DUPLICATE KEY UPDATE last_read_at = NOW()'
+        );
+        $s->execute([$ticketId, $userId]);
     }
 
     /**
@@ -164,6 +210,11 @@ final class Ticket
         ) {
             $sql .= ' AND t.priority = ?';
             $args[] = $filters['priority'];
+        }
+
+        if (isset($filters['assigned_to']) && $filters['assigned_to'] !== '') {
+            $sql .= ' AND t.assigned_to = ?';
+            $args[] = (int) $filters['assigned_to'];
         }
 
         /*
@@ -311,5 +362,24 @@ final class Ticket
                 )
                 ->fetchColumn(),
         ];
+    }
+
+    public static function adminStats(?int $assignedTo = null): array
+    {
+        $where = $assignedTo === null ? '' : ' WHERE assigned_to = ' . (int) $assignedTo;
+        $pdo = Database::conn();
+        $stats = ['total' => 0, 'unassigned' => 0, 'open' => 0, 'in_progress' => 0, 'pending' => 0, 'resolved' => 0, 'closed' => 0];
+
+        foreach (array_keys($stats) as $status) {
+            if ($status === 'total') {
+                $stats[$status] = (int) $pdo->query("SELECT COUNT(*) FROM tickets$where")->fetchColumn();
+            } elseif ($status === 'unassigned') {
+                $stats[$status] = (int) $pdo->query("SELECT COUNT(*) FROM tickets" . ($where ? $where . ' AND' : ' WHERE') . ' assigned_to IS NULL')->fetchColumn();
+            } else {
+                $stats[$status] = (int) $pdo->query("SELECT COUNT(*) FROM tickets" . ($where ? $where . ' AND' : ' WHERE') . ' status = ' . $pdo->quote($status))->fetchColumn();
+            }
+        }
+
+        return $stats;
     }
 }

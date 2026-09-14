@@ -13,19 +13,12 @@ function e(?string $v): string
 
 /**
  * Generate a URL inside the application.
- *
- * Example:
- * url('/tickets/2')
- *
- * becomes:
- * /dashboard/PROJECTS/supportflow-suite/backend/public/tickets/2
  */
 function url(string $path = ''): string
 {
-    $basePath = rtrim(
-        str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME'] ?? '')),
-        '/'
-    );
+    $scriptName = str_replace('\\', '/', $_SERVER['SCRIPT_NAME'] ?? '');
+
+    $basePath = rtrim(dirname($scriptName), '/');
 
     if ($path === '') {
         return $basePath ?: '/';
@@ -33,6 +26,11 @@ function url(string $path = ''): string
 
     if ($path[0] !== '/') {
         $path = '/' . $path;
+    }
+
+    // Prevent the base path from being added twice.
+    if ($basePath !== '' && str_starts_with($path, $basePath . '/')) {
+        return $path;
     }
 
     return $basePath . $path;
@@ -135,4 +133,17 @@ function view(string $template, array $data = []): void
 function generate_ticket_no(): string
 {
     return 'TKT-' . strtoupper(bin2hex(random_bytes(3)));
+}
+
+/**
+ * Render the shared authorization error page without changing the response code.
+ */
+function forbidden(string $message = 'You do not have permission to access this area.'): never
+{
+    http_response_code(403);
+    view('errors/403', [
+        'title' => 'Access denied',
+        'message' => $message,
+    ]);
+    exit;
 }

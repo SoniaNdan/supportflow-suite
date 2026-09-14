@@ -81,6 +81,21 @@
             >
         </div>
 
+        <div>
+            <label class="block text-sm text-slate-600 mb-1">
+                Confirm password
+            </label>
+
+            <input
+                type="password"
+                name="confirm_password"
+                placeholder="Confirm new password"
+                required
+                minlength="8"
+                class="w-full rounded border border-slate-300 px-3 py-2"
+            >
+        </div>
+
         <button
             type="submit"
             class="bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700"

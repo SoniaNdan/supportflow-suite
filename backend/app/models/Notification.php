@@ -32,4 +32,14 @@ final class Notification
         $s->execute([$userId]);
         return (int)$s->fetchColumn();
     }
+
+    public static function unreadForUser(int $userId): array
+    {
+        return array_filter(self::forUser($userId), static fn(array $item): bool => !(bool)$item['is_read']);
+    }
+
+    public static function hasUnread(int $userId): bool
+    {
+        return self::unreadCount($userId) > 0;
+    }
 }
