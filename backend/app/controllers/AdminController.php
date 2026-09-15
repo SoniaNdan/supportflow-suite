@@ -163,6 +163,7 @@ final class AdminController
             if (
                 !$admin ||
                 $admin['role'] !== 'admin' ||
+                $admin['admin_level'] !== 'support_admin' ||
                 $admin['status'] !== 'active'
             ) {
                 flash('error', 'Invalid admin selected.');

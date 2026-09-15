@@ -94,6 +94,7 @@ final class User
              FROM users
              WHERE role = 'admin'
              AND status = 'active'
+             AND admin_level = 'support_admin'
              ORDER BY name ASC"
         )->fetchAll();
     }
