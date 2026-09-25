@@ -6,7 +6,8 @@ import { Button } from "@/components/ui/button";
 import { StatusBadge, PriorityBadge } from "@/components/status-badge";
 import { Search, FilePlus2 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { fetchTickets, type TicketSummary } from "@/lib/tickets-api";
+import { toast } from "sonner";
 import { useAuth } from "@/hooks/use-auth";
 import { RequireAuth } from "@/components/require-auth";
 
@@ -20,12 +21,7 @@ const statusMap: Record<string, string> = {
   All: "", Open: "open", "In Progress": "in_progress", Pending: "pending", Resolved: "resolved", Closed: "closed",
 };
 
-type Row = {
-  id: string; ticket_no: string; subject: string; category: string;
-  status: "open" | "in_progress" | "pending" | "resolved" | "closed";
-  priority: "low" | "medium" | "high" | "urgent";
-  created_at: string;
-};
+type Row = TicketSummary;
 
 function MyComplaints() {
   const { user } = useAuth();
@@ -36,16 +32,26 @@ function MyComplaints() {
 
   useEffect(() => {
     if (!user) return;
+
+    let cancelled = false;
     setLoading(true);
-    supabase
-      .from("complaints")
-      .select("id, ticket_no, subject, category, status, priority, created_at")
-      .eq("user_id", user.id)
-      .order("created_at", { ascending: false })
-      .then(({ data }) => {
-        setRows((data ?? []) as Row[]);
-        setLoading(false);
+
+    fetchTickets()
+      .then((tickets) => {
+        if (!cancelled) setRows(tickets);
+      })
+      .catch((error) => {
+        if (!cancelled) {
+          toast.error(error instanceof Error ? error.message : "Unable to load your tickets.");
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
       });
+
+    return () => {
+      cancelled = true;
+    };
   }, [user]);
 
   const filtered = useMemo(() => {

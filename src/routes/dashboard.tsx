@@ -5,7 +5,8 @@ import { Button } from "@/components/ui/button";
 import { StatusBadge, PriorityBadge } from "@/components/status-badge";
 import { ArrowUpRight, FilePlus2, Inbox, CheckCircle2, Clock, TrendingUp } from "lucide-react";
 import { useEffect, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { fetchTickets, type TicketSummary } from "@/lib/tickets-api";
+import { toast } from "sonner";
 import { useAuth } from "@/hooks/use-auth";
 import { RequireAuth } from "@/components/require-auth";
 
@@ -14,12 +15,7 @@ export const Route = createFileRoute("/dashboard")({
   component: () => <RequireAuth><Dashboard /></RequireAuth>,
 });
 
-type Row = {
-  id: string; ticket_no: string; subject: string; category: string;
-  status: "open" | "in_progress" | "pending" | "resolved" | "closed";
-  priority: "low" | "medium" | "high" | "urgent";
-  created_at: string;
-};
+type Row = TicketSummary;
 
 function Dashboard() {
   const { user } = useAuth();
@@ -27,11 +23,21 @@ function Dashboard() {
 
   useEffect(() => {
     if (!user) return;
-    supabase.from("complaints")
-      .select("id, ticket_no, subject, category, status, priority, created_at")
-      .eq("user_id", user.id)
-      .order("created_at", { ascending: false })
-      .then(({ data }) => setRows((data ?? []) as Row[]));
+
+    let cancelled = false;
+    fetchTickets()
+      .then((tickets) => {
+        if (!cancelled) setRows(tickets);
+      })
+      .catch((error) => {
+        if (!cancelled) {
+          toast.error(error instanceof Error ? error.message : "Unable to load your tickets.");
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, [user]);
 
   const total = rows.length;
