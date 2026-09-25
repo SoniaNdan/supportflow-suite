@@ -46,7 +46,7 @@ export function DashboardLayout({ children, variant = "user", title, breadcrumbs
   const { user, isStaff, signOut } = useAuth();
   const navigate = useNavigate();
   const nav = variant === "admin" ? adminNav : userNav;
-  const displayName = (user?.user_metadata?.full_name as string) || user?.email?.split("@")[0] || "User";
+  const displayName = user?.name || user?.email?.split("@")[0] || "User";
   const initials = displayName.split(" ").map((p) => p[0]).join("").slice(0, 2).toUpperCase();
 
   async function handleSignOut() {

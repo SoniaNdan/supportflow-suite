@@ -1,68 +1,86 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
-import type { Session, User } from "@supabase/supabase-js";
-import { supabase } from "@/integrations/supabase/client";
+import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
+import { apiRequest, clearCsrfToken } from "@/lib/api";
 
-type Role = "admin" | "agent" | "user";
+export type BackendRole = "user" | "admin";
+export type AdminLevel = "system_admin" | "support_admin" | null;
+
+export interface BackendUser {
+  id: number;
+  name: string;
+  email: string;
+  role: BackendRole;
+  admin_level: AdminLevel;
+}
+
+type SessionResponse = { authenticated: boolean; user: BackendUser | null };
+type LoginResponse = { success: true; user: BackendUser };
 
 interface AuthCtx {
-  session: Session | null;
-  user: User | null;
-  roles: Role[];
+  user: BackendUser | null;
   loading: boolean;
   isAdmin: boolean;
+  isSystemAdmin: boolean;
+  isSupportAdmin: boolean;
   isStaff: boolean;
+  signIn: (email: string, password: string) => Promise<BackendUser>;
   signOut: () => Promise<void>;
+  refreshSession: () => Promise<BackendUser | null>;
 }
 
 const Ctx = createContext<AuthCtx | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [session, setSession] = useState<Session | null>(null);
-  const [roles, setRoles] = useState<Role[]>([]);
+  const [user, setUser] = useState<BackendUser | null>(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, s) => {
-      setSession(s);
-      if (s?.user) {
-        // defer to avoid deadlock
-        setTimeout(() => fetchRoles(s.user.id), 0);
-      } else {
-        setRoles([]);
-      }
-    });
-    supabase.auth.getSession().then(({ data: { session: s } }) => {
-      setSession(s);
-      if (s?.user) fetchRoles(s.user.id);
-      setLoading(false);
-    });
-    return () => subscription.unsubscribe();
+  const refreshSession = useCallback(async (): Promise<BackendUser | null> => {
+    const session = await apiRequest<SessionResponse>("/api/auth/me");
+    setUser(session.user);
+    return session.user;
   }, []);
 
-  async function fetchRoles(userId: string) {
-    const { data } = await supabase.from("user_roles").select("role").eq("user_id", userId);
-    setRoles((data ?? []).map((r) => r.role as Role));
+  useEffect(() => {
+    refreshSession()
+      .catch(() => setUser(null))
+      .finally(() => setLoading(false));
+  }, [refreshSession]);
+
+  async function signIn(email: string, password: string): Promise<BackendUser> {
+    const response = await apiRequest<LoginResponse>("/api/auth/login", {
+      method: "POST",
+      data: { email, password },
+    });
+    setUser(response.user);
+    return response.user;
   }
 
-  async function signOut() {
-    await supabase.auth.signOut();
+  async function signOut(): Promise<void> {
+    await apiRequest("/api/auth/logout", { method: "POST" });
+    clearCsrfToken();
+    setUser(null);
   }
+
+  const isAdmin = user?.role === "admin";
+  const isSystemAdmin = isAdmin && user?.admin_level === "system_admin";
+  const isSupportAdmin = isAdmin && user?.admin_level === "support_admin";
 
   const value: AuthCtx = {
-    session,
-    user: session?.user ?? null,
-    roles,
+    user,
     loading,
-    isAdmin: roles.includes("admin"),
-    isStaff: roles.includes("admin") || roles.includes("agent"),
+    isAdmin,
+    isSystemAdmin,
+    isSupportAdmin,
+    isStaff: isSystemAdmin || isSupportAdmin,
+    signIn,
     signOut,
+    refreshSession,
   };
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
 
 export function useAuth() {
-  const v = useContext(Ctx);
-  if (!v) throw new Error("useAuth must be used inside AuthProvider");
-  return v;
+  const value = useContext(Ctx);
+  if (!value) throw new Error("useAuth must be used inside AuthProvider");
+  return value;
 }

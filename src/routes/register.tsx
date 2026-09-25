@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { apiRequest } from "@/lib/api";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/register")({
@@ -21,23 +21,21 @@ function RegisterPage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (password.length < 6) {
-      toast.error("Password must be at least 6 characters");
+    if (password.length < 8) {
+      toast.error("Password must be at least 8 characters");
       return;
     }
     setLoading(true);
-    const { error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        emailRedirectTo: `${window.location.origin}/dashboard`,
-        data: { full_name: fullName },
-      },
-    });
-    setLoading(false);
-    if (error) {
-      toast.error(error.message);
+    try {
+      await apiRequest("/api/auth/register", {
+        method: "POST",
+        data: { name: fullName, email, password },
+      });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Unable to create the account.");
       return;
+    } finally {
+      setLoading(false);
     }
     toast.success("Account created! You can now sign in.");
     navigate({ to: "/login" });

@@ -9,24 +9,27 @@ final class AuthController
 
     public function login(): void {
         csrf_verify();
-        $v = (new Validator($_POST))->required('email')->email('email')->required('password');
-        if (!$v->passes()) {
+        $result = $this->authenticate($_POST);
+        if (!$result['success']) {
             remember_old(['email' => $_POST['email'] ?? '']);
-            flash('error', implode(' ', $v->errors));
+            flash('error', $result['message']);
             redirect('/login');
         }
-        $u = User::findByEmail(trim((string)$_POST['email']));
-        if (!$u || !password_verify((string)$_POST['password'], $u['password_hash'])) {
-            flash('error', 'Invalid credentials.');
-            redirect('/login');
-        }
-        if (($u['status'] ?? 'active') !== 'active') {
-            flash('error', 'Account suspended.');
-            redirect('/login');
-        }
-        auth_login($u);
-        ActivityLog::log((int)$u['id'], 'login', 'User signed in');
+        $this->startSession($result['user']);
         redirect(auth_is_admin() ? '/admin/dashboard' : '/dashboard');
+    }
+
+    /** JSON API entry point. CSRF verification is performed by routes/api.php. */
+    public function loginJson(): array {
+        $result = $this->authenticate($_POST);
+        if (!$result['success']) return $result;
+
+        $this->startSession($result['user']);
+        return [
+            'success' => true,
+            'status' => 200,
+            'user' => $this->publicUser(auth_user()),
+        ];
     }
 
     public function showRegister(): void {
@@ -35,33 +38,41 @@ final class AuthController
 
     public function register(): void {
         csrf_verify();
-        $v = (new Validator($_POST))
-            ->required('name')->max('name', 100)
-            ->required('email')->email('email')
-            ->required('password')->min('password', 8);
-        if (!$v->passes()) {
+        $result = $this->registerUser($_POST);
+        if (!$result['success']) {
             remember_old($_POST);
-            flash('error', implode(' ', $v->errors));
+            flash('error', $result['message']);
             redirect('/register');
         }
-        if (User::findByEmail((string)$_POST['email'])) {
-            flash('error', 'Email already registered.');
-            redirect('/register');
-        }
-        $id = User::create(
-            trim((string)$_POST['name']),
-            trim((string)$_POST['email']),
-            password_hash((string)$_POST['password'], PASSWORD_BCRYPT),
-        );
-        ActivityLog::log($id, 'register', 'New account created');
         flash('success', 'Account created. Please sign in.');
         redirect('/login');
     }
 
+    /** JSON API entry point; registration intentionally does not create a session. */
+    public function registerJson(): array {
+        $result = $this->registerUser($_POST);
+        if (!$result['success']) return $result;
+
+        return [
+            'success' => true,
+            'status' => 201,
+            'user' => $result['user'],
+        ];
+    }
+
     public function logout(): void {
-        if (auth_id()) ActivityLog::log(auth_id(), 'logout', 'User signed out');
-        auth_logout();
+        $this->endSession();
         redirect('/login');
+    }
+
+    /** JSON API entry point. */
+    public function logoutJson(): array {
+        $this->endSession();
+        // auth_logout() destroys the session; start a fresh anonymous one for the next CSRF token.
+        if (session_status() !== PHP_SESSION_ACTIVE) {
+            session_start();
+        }
+        return ['success' => true, 'status' => 200];
     }
 
     public function showForgot(): void { view('auth/forgot', ['title' => 'Forgot password']); }
@@ -124,5 +135,81 @@ final class AuthController
         Database::conn()->prepare('UPDATE password_resets SET used_at = NOW() WHERE id = ?')->execute([$row['id']]);
         flash('success', 'Password updated. Please sign in.');
         redirect('/login');
+    }
+
+    private function authenticate(array $input): array
+    {
+        $v = (new Validator($input))->required('email')->email('email')->required('password');
+        if (!$v->passes()) {
+            return ['success' => false, 'status' => 422, 'message' => implode(' ', $v->errors)];
+        }
+
+        $user = User::findByEmail(trim((string)$input['email']));
+        if (!$user || !password_verify((string)$input['password'], $user['password_hash'])) {
+            return ['success' => false, 'status' => 401, 'message' => 'Invalid credentials.'];
+        }
+        if (($user['status'] ?? 'active') !== 'active') {
+            return ['success' => false, 'status' => 403, 'message' => 'Account suspended.'];
+        }
+
+        return ['success' => true, 'status' => 200, 'user' => $user];
+    }
+
+    private function registerUser(array $input): array
+    {
+        $v = (new Validator($input))
+            ->required('name')->max('name', 100)
+            ->required('email')->email('email')
+            ->required('password')->min('password', 8);
+        if (!$v->passes()) {
+            return ['success' => false, 'status' => 422, 'message' => implode(' ', $v->errors)];
+        }
+        if (User::findByEmail((string)$input['email'])) {
+            return ['success' => false, 'status' => 409, 'message' => 'Email already registered.'];
+        }
+
+        $id = User::create(
+            trim((string)$input['name']),
+            trim((string)$input['email']),
+            password_hash((string)$input['password'], PASSWORD_BCRYPT),
+        );
+        ActivityLog::log($id, 'register', 'New account created');
+
+        return [
+            'success' => true,
+            'status' => 201,
+            'user' => [
+                'id' => $id,
+                'name' => trim((string)$input['name']),
+                'email' => trim((string)$input['email']),
+                'role' => 'user',
+                'admin_level' => null,
+            ],
+        ];
+    }
+
+    private function startSession(array $user): void
+    {
+        auth_login($user);
+        ActivityLog::log((int)$user['id'], 'login', 'User signed in');
+    }
+
+    private function endSession(): void
+    {
+        if (auth_id()) ActivityLog::log(auth_id(), 'logout', 'User signed out');
+        auth_logout();
+    }
+
+    private function publicUser(?array $user): ?array
+    {
+        if (!$user) return null;
+
+        return [
+            'id' => (int)$user['id'],
+            'name' => (string)$user['name'],
+            'email' => (string)$user['email'],
+            'role' => (string)$user['role'],
+            'admin_level' => $user['admin_level'] ?? null,
+        ];
     }
 }

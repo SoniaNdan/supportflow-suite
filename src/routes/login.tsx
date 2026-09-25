@@ -4,7 +4,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useState, useEffect } from "react";
-import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { toast } from "sonner";
 
@@ -19,27 +18,29 @@ export const Route = createFileRoute("/login")({
 
 function LoginPage() {
   const navigate = useNavigate();
-  const { session } = useAuth();
+  const { user, signIn } = useAuth();
   const { next } = Route.useSearch();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (session) {
+    if (user) {
       if (next) window.location.href = next;
       else navigate({ to: "/dashboard" });
     }
-  }, [session, navigate, next]);
+  }, [user, navigate, next]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    setLoading(false);
-    if (error) {
-      toast.error(error.message);
+    try {
+      await signIn(email, password);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Unable to sign in.");
       return;
+    } finally {
+      setLoading(false);
     }
     toast.success("Welcome back!");
     if (next) { window.location.href = next; return; }
