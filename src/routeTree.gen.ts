@@ -28,6 +28,7 @@ import { Route as ComplaintsIndexRouteImport } from './routes/complaints.index'
 import { Route as ComplaintsIdRouteImport } from './routes/complaints.$id'
 import { Route as ComplaintsNewRouteImport } from './routes/complaints.new'
 import { Route as RegisterBeforeCsrfFixRouteImport } from './routes/register.before-csrf-fix'
+import { Route as RegisterBeforeSessionFixRouteImport } from './routes/register.before-session-fix'
 import { Route as DotlovableOauthConsentRouteImport } from './routes/[.]lovable.oauth.consent'
 import { Route as Char91DotmcpChar93InvokeToolToolRouteImport } from './routes/[.mcp]/invoke-tool/$tool'
 
@@ -128,6 +129,12 @@ const RegisterBeforeCsrfFixRoute = RegisterBeforeCsrfFixRouteImport.update({
   path: '/before-csrf-fix',
   getParentRoute: () => RegisterRoute,
 } as any)
+const RegisterBeforeSessionFixRoute =
+  RegisterBeforeSessionFixRouteImport.update({
+    id: '/before-session-fix',
+    path: '/before-session-fix',
+    getParentRoute: () => RegisterRoute,
+  } as any)
 const DotlovableOauthConsentRoute = DotlovableOauthConsentRouteImport.update({
   id: '/.lovable/oauth/consent',
   path: '/.lovable/oauth/consent',
@@ -158,6 +165,7 @@ export interface FileRoutesByFullPath {
   '/complaints/$id': typeof ComplaintsIdRoute
   '/complaints/new': typeof ComplaintsNewRoute
   '/register/before-csrf-fix': typeof RegisterBeforeCsrfFixRoute
+  '/register/before-session-fix': typeof RegisterBeforeSessionFixRoute
   '/admin/': typeof AdminIndexRoute
   '/complaints/': typeof ComplaintsIndexRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
@@ -181,6 +189,7 @@ export interface FileRoutesByTo {
   '/complaints/$id': typeof ComplaintsIdRoute
   '/complaints/new': typeof ComplaintsNewRoute
   '/register/before-csrf-fix': typeof RegisterBeforeCsrfFixRoute
+  '/register/before-session-fix': typeof RegisterBeforeSessionFixRoute
   '/admin': typeof AdminIndexRoute
   '/complaints': typeof ComplaintsIndexRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
@@ -205,6 +214,7 @@ export interface FileRoutesById {
   '/complaints/$id': typeof ComplaintsIdRoute
   '/complaints/new': typeof ComplaintsNewRoute
   '/register/before-csrf-fix': typeof RegisterBeforeCsrfFixRoute
+  '/register/before-session-fix': typeof RegisterBeforeSessionFixRoute
   '/admin/': typeof AdminIndexRoute
   '/complaints/': typeof ComplaintsIndexRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
@@ -230,6 +240,7 @@ export interface FileRouteTypes {
     | '/complaints/$id'
     | '/complaints/new'
     | '/register/before-csrf-fix'
+    | '/register/before-session-fix'
     | '/admin/'
     | '/complaints/'
     | '/.lovable/oauth/consent'
@@ -253,6 +264,7 @@ export interface FileRouteTypes {
     | '/complaints/$id'
     | '/complaints/new'
     | '/register/before-csrf-fix'
+    | '/register/before-session-fix'
     | '/admin'
     | '/complaints'
     | '/.lovable/oauth/consent'
@@ -276,6 +288,7 @@ export interface FileRouteTypes {
     | '/complaints/$id'
     | '/complaints/new'
     | '/register/before-csrf-fix'
+    | '/register/before-session-fix'
     | '/admin/'
     | '/complaints/'
     | '/.lovable/oauth/consent'
@@ -440,6 +453,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof RegisterBeforeCsrfFixRouteImport
       parentRoute: typeof RegisterRoute
     }
+    '/register/before-session-fix': {
+      id: '/register/before-session-fix'
+      path: '/before-session-fix'
+      fullPath: '/register/before-session-fix'
+      preLoaderRoute: typeof RegisterBeforeSessionFixRouteImport
+      parentRoute: typeof RegisterRoute
+    }
     '/.lovable/oauth/consent': {
       id: '/.lovable/oauth/consent'
       path: '/.lovable/oauth/consent'
@@ -459,10 +479,12 @@ declare module '@tanstack/react-router' {
 
 interface RegisterRouteChildren {
   RegisterBeforeCsrfFixRoute: typeof RegisterBeforeCsrfFixRoute
+  RegisterBeforeSessionFixRoute: typeof RegisterBeforeSessionFixRoute
 }
 
 const RegisterRouteChildren: RegisterRouteChildren = {
   RegisterBeforeCsrfFixRoute: RegisterBeforeCsrfFixRoute,
+  RegisterBeforeSessionFixRoute: RegisterBeforeSessionFixRoute,
 }
 
 const RegisterRouteWithChildren = RegisterRoute._addFileChildren(

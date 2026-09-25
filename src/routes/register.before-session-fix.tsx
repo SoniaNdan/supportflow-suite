@@ -5,10 +5,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useState } from "react";
 import { apiRequest } from "@/lib/api";
-import { useAuth } from "@/hooks/use-auth";
 import { toast } from "sonner";
 
-export const Route = createFileRoute("/register")({
+export const Route = createFileRoute("/register/before-session-fix")({
   head: () => ({
     meta: [{ title: "Create account — ResolveDesk" }],
   }),
@@ -17,7 +16,6 @@ export const Route = createFileRoute("/register")({
 
 function RegisterPage() {
   const navigate = useNavigate();
-  const { user, signOut } = useAuth();
 
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
@@ -59,18 +57,6 @@ function RegisterPage() {
       return;
     } finally {
       setLoading(false);
-    }
-
-    // Registration does not sign the new account in.
-    // If another user was already logged in, end that old session
-    // before sending the visitor to the login screen.
-    if (user) {
-      try {
-        await signOut();
-      } catch {
-        // Account creation has already succeeded.
-        // Continue to login even if logout cleanup fails.
-      }
     }
 
     toast.success(
@@ -156,4 +142,3 @@ function RegisterPage() {
     </AuthShell>
   );
 }
-
